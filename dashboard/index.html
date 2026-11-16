@@ -1,0 +1,43 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Market vs data</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+body{font-family:system-ui,sans-serif;background:#111;color:#ddd;margin:16px}
+h1{font-size:18px;margin:0 0 4px} #upd{color:#888;font-size:13px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(460px,1fr));gap:16px}
+.card{background:#1b1b1b;border-radius:8px;padding:10px} .card h2{font-size:15px;margin:0 0 6px}
+.gap{font-size:13px;color:#aaa}
+</style></head><body>
+<h1>Exchange price vs data price (settlement basis)</h1>
+<div id="upd">loading…</div>
+<div class="grid" id="grid"></div>
+<script>
+const products=['1_WIND','2_CO2','3_FLOW','4_ETF','5_WIND_RANGE'];
+const charts={};
+const fmt=m=>{const t=16*60+m;return String(Math.floor(t/60)).padStart(2,'0')+':'+String(Math.floor(t%60)).padStart(2,'0');};
+for(const p of products){
+  const card=document.createElement('div');card.className='card';
+  card.innerHTML=`<h2>${p} <span class="gap" id="gap-${p}"></span></h2><canvas id="c-${p}" height="200"></canvas>`;
+  document.getElementById('grid').appendChild(card);
+  charts[p]=new Chart(document.getElementById('c-'+p),{type:'line',
+    data:{datasets:[{label:'exchange mid',data:[],borderColor:'#e8a33d',pointRadius:0,borderWidth:1.5},
+                    {label:'data value (our fair)',data:[],borderColor:'#4cc3ff',pointRadius:0,borderWidth:2,stepped:true}]},
+    options:{animation:false,parsing:false,scales:{x:{type:'linear',ticks:{color:'#888',callback:fmt}},y:{ticks:{color:'#888'}}},
+             plugins:{legend:{labels:{color:'#ccc'}}}}});
+}
+async function refresh(){
+  try{
+    const r=await fetch('data.json?'+Date.now());const d=await r.json();
+    document.getElementById('upd').textContent='updated '+d.updated+' (refreshes every 5 s)';
+    for(const p of products){
+      const s=d.products[p];if(!s)continue;
+      charts[p].data.datasets[0].data=s.market.map(([x,y])=>({x,y}));
+      charts[p].data.datasets[1].data=s.data.map(([x,y])=>({x,y}));
+      charts[p].update();
+      const m=s.market.at(-1),f=s.data.at(-1);
+      if(m&&f)document.getElementById('gap-'+p).textContent=`exchange ${m[1].toFixed(0)} · data ${f[1].toFixed(0)} · gap ${(f[1]-m[1]>=0?'+':'')+(f[1]-m[1]).toFixed(0)}`;
+    }
+  }catch(e){document.getElementById('upd').textContent='waiting for data… '+e;}
+}
+refresh();setInterval(refresh,5000);
+</script></body></html>

@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Build output
+build/
+.gradle/
+*.class
+
+# Run output
+logs/
+dashboard/data.json
+dashboard/data.json.tmp
+
+# Editors and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+__pycache__/
